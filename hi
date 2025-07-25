@@ -1,3 +1,4 @@
+print("hi")
 if getgenv().scriptinject == true then error("Alt control Script is already executed") end
 getgenv().scriptinject = true
 
