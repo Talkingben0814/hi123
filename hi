@@ -1,3 +1,5 @@
+getgenv().PS_Owner = 1236337311
+getgenv().FPS = 3
 
 if getgenv().scriptinject == true then error("Alt control Script is already executed") end
 getgenv().scriptinject = true
@@ -802,55 +804,34 @@ end
 
 
 
----teleport setup
+local teleportThread
+local teleporting = false
+
 local function teleport(position)
-    local character = localPlayer.Character
-    if not character then return end
+    teleporting = false
+    if teleportThread then
+        task.wait()
+    end
 
-    for _, part in ipairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
+    teleporting = true
+    teleportThread = task.spawn(function()
+        while teleporting do
+            task.wait()
+            pcall(function()
+                local hrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.CFrame = position
+                    hrp.Velocity = Vector3.zero
+                end
+            end)
         end
-    end
-
-    
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        hrp.CFrame = position
-        hrp.Velocity = Vector3.zero
-    end
-
-    local humanoid = character:FindFirstChild("Humanoid")
-    if humanoid then
-        local animator = humanoid:FindFirstChild("Animator")
-        if animator then
-            for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-                track:Stop()
-            end
-        end
-    end
+    end)
 end
 
-local lastPlatform = nil
-
-local function createPlatform(position)
-    if lastPlatform then
-        lastPlatform:Destroy()
-    end
-
-    local platform = Instance.new("Part")
-    platform.Name = "SafePlatform"
-    platform.Size = Vector3.new(10, 1, 10)
-    platform.Position = position - Vector3.new(0, 3.5, 0)
-    platform.Anchored = true
-    platform.CanCollide = true
-    platform.BrickColor = BrickColor.new("Bright blue")
-    platform.Parent = game.Workspace
-
-    lastPlatform = platform
-
-    return platform
+local function stopTeleport()
+    teleporting = false
 end
+
 
 
 
@@ -940,12 +921,10 @@ local function track_kick(target)
 
     local function setupTracking(character)
         teleport(vault_Position)
-        createPlatform(Root.Position)
         task.wait(1)
         game:GetService("ReplicatedStorage"):WaitForChild("MainEvent"):FireServer("VIP_CMD", "Summon", target)
         task.wait(1)
         teleport(centerPosition)
-        createPlatform(Root.Position)
         shout("Please leave the game " .. target.Name .. " or you will be kicked.")
 
         local humanoid = character:WaitForChild("Humanoid")
@@ -1338,7 +1317,6 @@ end
 if localPlayer.UserId == PS_Owner then
     local centerPosition = CFrame.new(-263.75531005859375, -13.117109298706055, -378.037841796875)
     teleport(centerPosition)
-    createPlatform(Root.Position)
 end
 
 task.wait(10)
