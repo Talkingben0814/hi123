@@ -1,5 +1,3 @@
-getgenv().PS_Owner = 1236337311
-getgenv().FPS = 3
 
 if getgenv().scriptinject == true then error("Alt control Script is already executed") end
 getgenv().scriptinject = true
