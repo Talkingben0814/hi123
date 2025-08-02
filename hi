@@ -1239,12 +1239,12 @@ if localPlayer.UserId == PS_Owner then
             else
                 task.wait(3)
                 if not is_bot(player.UserId) then
-                    track_kick(player)
-                else
-                    if is_whitelisted_user(player.UserId) then
+                    if not is_whitelisted_user(player.UserId) then
+                        track_kick(player)
+                    else
                         game:GetService("ReplicatedStorage"):WaitForChild("MainEvent"):FireServer("VIP_CMD", "Summon", player)
                     end
-                end
+                end 
             end
 
         else
