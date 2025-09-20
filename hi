@@ -1,3 +1,6 @@
+
+
+
 if getgenv().scriptinject == true then error("Alt control Script is already executed") end
 getgenv().scriptinject = true
 
@@ -1114,7 +1117,13 @@ local function start_polling()
                     if not hasTeleported then
                         task.wait(10)
                     end
-                    teleportToClub(result.squadNumber)
+                    if Setup == 1 then
+                        teleportToClub(result.squadNumber)
+                    else
+                        local centerPosition = CFrame.new(-263.75531005859375, -13.117109298706055, -378.037841796875)
+                        teleport(centerPosition)
+                    end
+
                     hasTeleported = true
                 end
 
