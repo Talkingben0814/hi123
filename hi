@@ -1,7 +1,7 @@
-
-
 if getgenv().scriptinject == true then error("Alt control Script is already executed") end
 getgenv().scriptinject = true
+
+
 
 local Converted = {
     ["_ScreenGui"] = Instance.new("ScreenGui");
@@ -94,7 +94,7 @@ Converted["_UIGradient1"].Rotation = 81
 Converted["_UIGradient1"].Parent = Converted["_UsernameFrame"]
 
 Converted["_TextLabel"].Font = Enum.Font.SourceSans
-Converted["_TextLabel"].Text = "HeavenSellz"
+Converted["_TextLabel"].Text = "loading..."
 Converted["_TextLabel"].TextColor3 = Color3.fromRGB(255, 255, 255)
 Converted["_TextLabel"].TextScaled = true
 Converted["_TextLabel"].TextSize = 14
@@ -634,6 +634,16 @@ local function log(msg)
     mainframe.LogFrame.TextLabel.Text = msg
 end
 
+
+
+
+
+
+
+
+
+
+
 local Players = game:GetService('Players')
 local Workspace = game:GetService('Workspace')
 local replicatedStorage = game:GetService("ReplicatedStorage")
@@ -791,9 +801,11 @@ local function is_whitelisted_user(robloxUserId)
 
         for _, id in ipairs(data.whitelisted_users) do
             if tostring(id) == tostring(robloxUserId) then
+                print("user is whitelisted")
                 return true
             end
         end
+        print("heck no")
         return nil
     else
         return nil
@@ -881,17 +893,104 @@ local function isPlayerNearPosition(player, position, maxDistance)
     return distance <= maxDistance
 end
 
+local cash_aura = false
+
+
+local teleportTask
+local teleporting = false
+
+local function teleport2(position)
+    teleporting = false
+    task.wait()
+
+    teleporting = true
+    teleportTask = task.spawn(function()
+        while teleporting do
+            task.wait()
+            pcall(function()
+                local root = localPlayer.Character:WaitForChild("HumanoidRootPart")
+                root.CFrame = position
+                root.Velocity = Vector3.zero
+            end)
+        end
+    end)
+
+    local animation = Instance.new("Animation")
+    animation.AnimationId = "rbxassetid://13850660986"
+
+    local humanoid = localPlayer.Character:WaitForChild("Humanoid")
+    local loadedAnimation = humanoid:LoadAnimation(animation)
+    loadedAnimation:Play()
+end
+
+
+
+
+
+
 local function dropCashIfNeeded()
     local centerPosition = Vector3.new(-263.755, -13.117, -378.038)
     local MAX_DISTANCE = 50
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
 
+
     while true do
         task.wait(15.5)
-        if countFloorCash() < pre_drop and isPlayerNearPosition(LocalPlayer, centerPosition, MAX_DISTANCE) then
-            if isOwnerInGame() then
-                game:GetService("ReplicatedStorage"):WaitForChild("MainEvent"):FireServer("DropMoney", 15000)
+
+        if cash_aura then
+            log("Cash Aura")
+
+
+            local teleportCooldown = 0
+            local COOLDOWN_TIME = 2.5
+            local CLICK_DISTANCE = 11
+
+            while cash_aura do
+                local drops = workspace.Ignored.Drop:GetChildren()
+                local nearbyDrops = {}
+                local farthestDrop
+
+                -- get the near drops into list else farthestdrop
+                for _, v in ipairs(drops) do
+                    if v:IsA("Part") then
+                        local dist = localPlayer:DistanceFromCharacter(v.Position)
+
+                        if dist <= CLICK_DISTANCE then
+                            table.insert(nearbyDrops, v)
+                        else
+                            farthestDrop = v
+                        end
+                    end
+                end
+
+                --pickup if neardrops
+                if #nearbyDrops > 0 then
+                    task.wait(2.5)
+                    for _, v in ipairs(nearbyDrops) do
+                        if v:FindFirstChild("ClickDetector") then
+                            fireclickdetector(v.ClickDetector)
+                            task.wait(0.4)
+                        end
+                    end
+                else
+                    if farthestDrop and (tick() - teleportCooldown) >= COOLDOWN_TIME then
+                        teleport2(CFrame.new(farthestDrop.Position + Vector3.new(0, 3, 0)))
+                        
+                        teleportCooldown = tick()
+                    end
+                end
+
+                task.wait(0.1)
+            end
+
+
+
+        else
+            if countFloorCash() < pre_drop and isPlayerNearPosition(LocalPlayer, centerPosition, MAX_DISTANCE) then
+                if isOwnerInGame() then
+                    game:GetService("ReplicatedStorage"):WaitForChild("MainEvent"):FireServer("DropMoney", 15000)
+                end
             end
         end
     end
@@ -964,27 +1063,29 @@ local function track_kick(target)
     end)
 end
 
-local use_codes = true
 
-local function use_codes(codes)
-    use_codes = false
-    for i, code in ipairs(codes) do
-        task.wait(5)
-        game:GetService("ReplicatedStorage"):WaitForChild("MainEvent"):FireServer("EnterPromoCode", code)
+
+
+
+local function teleportToClub(altNumber)
+    local CLUB_POSITION = Vector3.new(-291, 5, -405)
+
+    local offsetX = 0
+    local offsetZ = 0
+
+    if altNumber > 9 then
+        local firstDigit = tonumber(string.sub(tostring(altNumber), 1, 1))
+        local lastDigit = math.floor(altNumber % 10)
+        offsetX = (firstDigit * 35) / 2
+        offsetZ = (lastDigit * 10) / 2
+    else
+        local lastDigit = math.floor(altNumber % 10)
+        offsetZ = (lastDigit * 10) / 2
     end
+
+    teleport2(CFrame.new(CLUB_POSITION + Vector3.new(offsetZ, 0, offsetX)))
 end
 
-
-local function teleport2(position)
-    task.spawn(function()
-        while task.wait() do
-            pcall(function()
-                localPlayer.Character:WaitForChild("HumanoidRootPart").CFrame = position
-                localPlayer.Character:WaitForChild("HumanoidRootPart").Velocity = Vector3.new(0, 0, 0)
-            end)
-        end
-    end)
-end
 
 local hasTeleported = false
 local function start_polling()
@@ -992,6 +1093,13 @@ local function start_polling()
         local success, err = pcall(function()
             local result = add_or_update_bot()
             if result then
+
+
+                cash_aura = result.cashAuraEnabled
+                if cash_aura then
+                    return
+                end
+
                 if not isOwnerInGame() then
                     status(false)
                     log("Waiting for PS Owner to join")
@@ -1000,23 +1108,16 @@ local function start_polling()
                     log("Connected")
                 end
                 
-                if localPlayer.UserId ~= PS_Owner and not hasTeleported then
-                    task.wait(10)
-                    local centerPosition = CFrame.new(-263.7553, -13.1171, -378.0378)
-                    teleport2(centerPosition)
+
+
+                if localPlayer.UserId ~= PS_Owner then
+                    if not hasTeleported then
+                        task.wait(10)
+                    end
+                    teleportToClub(result.squadNumber)
                     hasTeleported = true
                 end
 
-                if result.codes and use_codes then
-                    task.spawn(function()
-                        local success, err = pcall(function()
-                            use_codes(result.codes)
-                        end)
-                        if not success then
-                            warn("Error in use_codes:", err)
-                        end
-                    end)
-                end
 
                 pre_drop = result.pre_drop_amount
                 if localPlayer.UserId == PS_Owner then
@@ -1228,7 +1329,6 @@ if localPlayer.UserId == PS_Owner then
          
             local playerData = getPlayerData(player.UserId)
             if playerData then
-                print(HttpService:JSONEncode(playerData))
                 local DHC_bought = playerData.player.DHC_bought or 0
                 local spentCash = playerData.player.spentCash or 0
                 local startCash = playerData.player.startCash or 0
@@ -1287,24 +1387,32 @@ else
 
     local function removeCharacter(player)
         if player ~= localPlayer and player.Character then
-            player.Character:Destroy()
+            pcall(function()
+                player.Character:Destroy()
+            end)
         end
     end
 
     for _, player in ipairs(Players:GetPlayers()) do
-        removeCharacter(player)
+        pcall(function()
+            removeCharacter(player)
+        end)
     end
 
     Players.PlayerAdded:Connect(function(player)
         player.CharacterAdded:Connect(function()
-            removeCharacter(player)
+            pcall(function()
+                removeCharacter(player)
+            end)        
         end)
     end)
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= localPlayer then
             player.CharacterAdded:Connect(function()
-                removeCharacter(player)
+                pcall(function()
+                    removeCharacter(player)
+                end)
             end)
         end
     end
@@ -1319,6 +1427,9 @@ if localPlayer.UserId == PS_Owner then
 end
 
 task.wait(10)
+
+
+
 --------------------------------------------------------------
 local hideCash = true		
 if hideCash == true then
@@ -1416,13 +1527,21 @@ end
 
 
 
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Remote = ReplicatedStorage:WaitForChild('MainEvent')
+task.spawn(function()
+    pcall(function()
+        local api = loadstring(game:HttpGet('https://raw.githubusercontent.com/furryboy1/dh-code-redeemer/refs/heads/main/codes.lua'))()
+
+        for _, v in pairs(api.codes) do
+            task.wait(api.rate)
+            Remote:FireServer('EnterPromoCode', v)
+        end
+    end)
+end)
 
 
-
-
-
-
-local GC = getconnections or get_signal_cons
+local GC = getconnections
 if GC then
     for i,v in pairs(GC(Players.LocalPlayer.Idled)) do
         if v["Disable"] then
